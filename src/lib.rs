@@ -114,7 +114,7 @@
     unused_parens,
     while_true
 )]
-use core::fmt;
+use core::fmt::{self, Write};
 
 /// The set of supported formats for indentation
 #[allow(missing_debug_implementations)]
@@ -153,8 +153,8 @@ pub enum Format<'a> {
 /// splits on newlines giving slices into the original string. Finally we alternate writing these
 /// lines and the specified indentation to the output buffer.
 #[allow(missing_debug_implementations)]
-pub struct Indented<'a, D: ?Sized> {
-    inner: &'a mut D,
+pub struct Indented<'a> {
+    inner: &'a mut dyn Write,
     needs_indent: bool,
     format: Format<'a>,
 }
@@ -180,7 +180,7 @@ impl Format<'_> {
     }
 }
 
-impl<'a, D> Indented<'a, D> {
+impl<'a> Indented<'a> {
     /// Sets the format to `Format::Numbered` with the provided index
     pub fn ind(self, ind: usize) -> Self {
         self.with_format(Format::Numbered { ind })
@@ -198,10 +198,7 @@ impl<'a, D> Indented<'a, D> {
     }
 }
 
-impl<T> fmt::Write for Indented<'_, T>
-where
-    T: fmt::Write + ?Sized,
-{
+impl fmt::Write for Indented<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for (ind, line) in s.split('\n').enumerate() {
             if ind > 0 {
@@ -227,7 +224,7 @@ where
 }
 
 /// Helper function for creating a default indenter
-pub fn indented<D: ?Sized>(f: &mut D) -> Indented<'_, D> {
+pub fn indented(f: &mut dyn Write) -> Indented<'_> {
     Indented {
         inner: f,
         needs_indent: true,
@@ -325,7 +322,6 @@ mod tests {
 
     use super::*;
     use alloc::string::String;
-    use core::fmt::Write as _;
 
     #[test]
     fn one_digit() {
@@ -453,7 +449,6 @@ mod tests {
 #[cfg(all(test, feature = "std"))]
 mod tests_std {
     use super::*;
-    use core::fmt::Write as _;
 
     #[test]
     fn dedent() {
